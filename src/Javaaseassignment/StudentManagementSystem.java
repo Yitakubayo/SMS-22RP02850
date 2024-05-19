@@ -1,14 +1,12 @@
-package Javaaseassignment;
-
 import javax.swing.*;
 import javax.swing.border.EmptyBorder;
+import javax.swing.table.DefaultTableCellRenderer;
 import javax.swing.table.DefaultTableModel;
 import java.awt.*;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.sql.*;
 
-// Main class to manage the student management system
 public class StudentManagementSystem extends JFrame {
     // Database connection details
     private static final String URL = "jdbc:mariadb://localhost:3306/iprc_tumba";
@@ -17,7 +15,7 @@ public class StudentManagementSystem extends JFrame {
 
     // Model for the table displaying student data
     private DefaultTableModel studentTableModel;
-    // Database connection and statement
+    // Database connection and prepared statement
     private Connection connection;
     private PreparedStatement insertStatement;
 
@@ -41,6 +39,7 @@ public class StudentManagementSystem extends JFrame {
         JPanel inputPanel = new JPanel(new GridLayout(5, 2, 10, 10));
         inputPanel.setBorder(new EmptyBorder(20, 20, 20, 20));
 
+        // Add input fields to the panel
         nameField = addLabelAndTextField(inputPanel, "Name:");
         regNoField = addLabelAndTextField(inputPanel, "Reg Number:");
         mathMarksField = addLabelAndTextField(inputPanel, "Math Marks:");
@@ -51,6 +50,7 @@ public class StudentManagementSystem extends JFrame {
         JPanel buttonPanel = new JPanel(new FlowLayout(FlowLayout.CENTER, 20, 10));
         buttonPanel.setBorder(new EmptyBorder(0, 20, 20, 20));
 
+        // Add buttons to the panel
         JButton addButton = createButton("Add Student", Color.GREEN, e -> addStudent());
         JButton exitButton = createButton("Exit", Color.RED, e -> System.exit(0));
 
@@ -61,6 +61,9 @@ public class StudentManagementSystem extends JFrame {
         String[] columnNames = {"Name", "Reg Number", "Average Marks"};
         studentTableModel = new DefaultTableModel(columnNames, 0);
         JTable studentTable = new JTable(studentTableModel);
+
+        // Set custom cell renderer for highlighting marks greater than 85
+        studentTable.setDefaultRenderer(Object.class, new CustomCellRenderer());
 
         JScrollPane scrollPane = new JScrollPane(studentTable);
 
@@ -93,11 +96,14 @@ public class StudentManagementSystem extends JFrame {
     // Method to initialize database connection and prepare statements
     private void initializeDatabase() {
         try {
+            // Load the MariaDB driver and establish a connection
             Class.forName("org.mariadb.jdbc.Driver");
             connection = DriverManager.getConnection(URL, USERNAME, PASSWORD);
+            // Prepare the SQL statement for inserting student data
             String insertSql = "INSERT INTO students (name, reg_number, math_marks, java_marks, php_marks) VALUES (?, ?, ?, ?, ?)";
             insertStatement = connection.prepareStatement(insertSql);
         } catch (Exception e) {
+            // Handle exceptions related to database connection
             JOptionPane.showMessageDialog(this, "Failed to connect to the database.", "Error", JOptionPane.ERROR_MESSAGE);
             e.printStackTrace();
             System.exit(1);
@@ -107,6 +113,7 @@ public class StudentManagementSystem extends JFrame {
     // Method to load existing students from the database
     private void loadExistingStudents() {
         try {
+            // Execute the SQL query to fetch existing students
             Statement statement = connection.createStatement();
             ResultSet resultSet = statement.executeQuery("SELECT name, reg_number, math_marks, java_marks, php_marks FROM students");
             while (resultSet.next()) {
@@ -117,10 +124,12 @@ public class StudentManagementSystem extends JFrame {
                 int phpMarks = resultSet.getInt("php_marks");
                 double averageMarks = (mathMarks + javaMarks + phpMarks) / 3.0;
 
+                // Add student data to the table model
                 Object[] rowData = {name, regNumber, averageMarks};
                 studentTableModel.addRow(rowData);
             }
         } catch (SQLException e) {
+            // Handle SQL exceptions
             JOptionPane.showMessageDialog(this, "Error loading existing students.", "Error", JOptionPane.ERROR_MESSAGE);
             e.printStackTrace();
         }
@@ -170,9 +179,11 @@ public class StudentManagementSystem extends JFrame {
             // Clear fields after adding
             clearFields();
         } catch (NumberFormatException ex) {
+            // Handle exceptions related to invalid numeric input
             JOptionPane.showMessageDialog(this, "Invalid input. Please enter valid numbers for marks.", "Error", JOptionPane.ERROR_MESSAGE);
             ex.printStackTrace();
         } catch (SQLException ex) {
+            // Handle SQL exceptions
             JOptionPane.showMessageDialog(this, "Error adding student. Please try again.", "Error", JOptionPane.ERROR_MESSAGE);
             ex.printStackTrace();
         }
@@ -193,5 +204,24 @@ public class StudentManagementSystem extends JFrame {
             StudentManagementSystem sms = new StudentManagementSystem();
             sms.setVisible(true);
         });
+    }
+
+    // Custom cell renderer class to highlight marks greater than 85
+    private static class CustomCellRenderer extends DefaultTableCellRenderer {
+        @Override
+        public Component getTableCellRendererComponent(JTable table, Object value, boolean isSelected, boolean hasFocus, int row, int column) {
+            Component cell = super.getTableCellRendererComponent(table, value, isSelected, hasFocus, row, column);
+            if (value instanceof Number) {
+                double marks = ((Number) value).doubleValue();
+                if (marks > 85) {
+                    cell.setBackground(Color.YELLOW); // Highlight cells with marks greater than 85
+                } else {
+                    cell.setBackground(Color.WHITE); // Default background color for other cells
+                }
+            } else {
+                cell.setBackground(Color.WHITE); // Default background color for non-numeric cells
+            }
+            return cell;
+        }
     }
 }
